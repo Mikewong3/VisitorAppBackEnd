@@ -30,8 +30,21 @@ const locationSchema = new Schema({
   locationId: String,
   types: [String]
 });
+let Location = mongoose.model("Location", locationSchema, "savedLocations");
 
 //CRUD METHODS
+
+//This is for retrieving all the saved Locations
+app.get("/getLocations", function(req, res) {
+  Location.find({}, function(err, result) {
+    if (err) {
+      throw err;
+    }
+    res.json(result);
+  });
+});
+
+//This is for getting the placeID of a specific location
 app.get("/locations/:name", function(req, res) {
   console.log(req.params.name);
   client
@@ -50,7 +63,7 @@ app.get("/locations/:name", function(req, res) {
       console.log(e);
     });
 });
-
+//This is for getting google details of a certain location
 app.get("/getDetails", function(req, res) {
   client
     .placeDetails({
@@ -65,7 +78,7 @@ app.get("/getDetails", function(req, res) {
       res.send(resp.data);
     });
 });
-
+//This is for getting autocomplete locations of a searched text
 app.get("/autocomplete/:name", function(req, res) {
   client
     .placeAutocomplete({
@@ -82,6 +95,7 @@ app.get("/autocomplete/:name", function(req, res) {
       console.log(error);
     });
 });
+//This is for posting a location to mongoDB
 app.post("/saveLocation", function(req, res) {
   res.send(req.body);
 
@@ -90,7 +104,6 @@ app.post("/saveLocation", function(req, res) {
   db.once("open", function() {
     console.log("Connection Successful!");
   });
-  let Location = mongoose.model("Location", locationSchema, "savedLocations");
   let saveLocation = new Location({
     address: req.body.address,
     locationId: req.body.locationId,
