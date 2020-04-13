@@ -10,6 +10,11 @@ const Client = require("@googlemaps/google-maps-services-js").Client;
 
 const client = new Client({});
 
+/* TODO: 
+-Add long and lat for the locations when posting them into mongoDB
+-Add Morgan for logging 
+- Add connect-timeout for iddlwa
+*/
 //***REMEBER TO HIDE MY KEY OR PEOPLE STEAL BAD****
 
 //Middleware extension for express
@@ -28,7 +33,8 @@ db.on("error", console.error.bind(console, "connection error:"));
 const locationSchema = new Schema({
   address: String,
   locationId: String,
-  types: [String]
+  types: [String],
+  geoCordinates: []
 });
 let Location = mongoose.model("Location", locationSchema, "savedLocations");
 
@@ -96,25 +102,35 @@ app.get("/autocomplete/:name", function(req, res) {
     });
 });
 //This is for posting a location to mongoDB
+//Need to fix the geolocation method; make it cleaner
 app.post("/saveLocation", function(req, res) {
   res.send(req.body);
+  let geoCords = [];
 
-  console.log("Post Worked");
-  console.log(req.body);
-  db.once("open", function() {
-    console.log("Connection Successful!");
-  });
-  let saveLocation = new Location({
-    address: req.body.address,
-    locationId: req.body.locationId,
-    types: req.body.types
-  });
-
-  saveLocation.save(function(err, location) {
-    if (err) {
-      return console.error(err);
-    }
-    console.log("Successfully Inserted");
-  });
+  client
+    .geocode({
+      params: {
+        key: api.googleApiKey.apiKey,
+        address: req.body.address
+      }
+    })
+    .then(resp => {
+      let saveLocation = new Location({
+        address: req.body.address,
+        locationId: req.body.locationId,
+        types: req.body.types,
+        geoCordinates: geoCords
+      });
+      saveLocation.geoCordinates = resp.data.results[0].geometry.location;
+      saveLocation.save(function(err, location) {
+        if (err) {
+          return console.error(err);
+        }
+        console.log("Successfully Inserted");
+      });
+    })
+    .catch(err => {
+      console.log(err);
+    });
 });
 app.listen(3000);
