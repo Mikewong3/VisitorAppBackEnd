@@ -31,8 +31,12 @@ db.on("error", console.error.bind(console, "connection error:"));
 
 //SCHEMAS FOR MONGODB **Put in seperate files later****
 const locationSchema = new Schema({
+  name: String,
   address: String,
+  phone: String,
   locationId: String,
+  rating: Number,
+  website: String,
   types: [String],
   geoCordinates: []
 });
@@ -70,18 +74,25 @@ app.get("/locations/:name", function(req, res) {
     });
 });
 //This is for getting google details of a certain location
-app.get("/getDetails", function(req, res) {
+app.get("/getDetails/:placeId", function(req, res) {
   client
     .placeDetails({
       params: {
         key: api.googleApiKey.apiKey,
-        place_id: "ChIJDZQ0SReRwokR7Qev4OIC_vg",
-        fields: ["formatted_address", "place_id"]
+        place_id: req.params.placeId,
+        fields: [
+          "formatted_address",
+          "place_id",
+          "geometry",
+          "rating",
+          "formatted_phone_number",
+          "types",
+          "website"
+        ]
       }
     })
     .then(resp => {
-      console.log(resp);
-      res.send(resp.data);
+      res.send(resp.data.result);
     });
 });
 //This is for getting autocomplete locations of a searched text
@@ -105,32 +116,24 @@ app.get("/autocomplete/:name", function(req, res) {
 //Need to fix the geolocation method; make it cleaner
 app.post("/saveLocation", function(req, res) {
   res.send(req.body);
+  console.log(req.body);
   let geoCords = [];
 
-  client
-    .geocode({
-      params: {
-        key: api.googleApiKey.apiKey,
-        address: req.body.address
-      }
-    })
-    .then(resp => {
-      let saveLocation = new Location({
-        address: req.body.address,
-        locationId: req.body.locationId,
-        types: req.body.types,
-        geoCordinates: geoCords
-      });
-      saveLocation.geoCordinates = resp.data.results[0].geometry.location;
-      saveLocation.save(function(err, location) {
-        if (err) {
-          return console.error(err);
-        }
-        console.log("Successfully Inserted");
-      });
-    })
-    .catch(err => {
-      console.log(err);
-    });
+  geoCords.push(req.body.lat);
+  geoCords.push(req.body.lng);
+  let saveLocation = new Location({
+    name: req.body.name,
+    address: req.body.address,
+    phone: req.body.phone,
+    locationId: req.body.locationId,
+    types: req.body.types,
+    rating: req.body.rating,
+    website: req.body.website,
+    geoCordinates: geoCords
+  });
+  saveLocation.save(function(err, location) {
+    if (err) return console.error(err);
+    console.log("Successfully Inserted");
+  });
 });
 app.listen(3000);
