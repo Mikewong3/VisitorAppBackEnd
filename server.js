@@ -6,7 +6,7 @@ var bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 
-const Client = require("@googlemaps/google-maps-services-js").Client;
+const { Client, Status } = require("@googlemaps/google-maps-services-js");
 
 const client = new Client({});
 
@@ -24,7 +24,7 @@ app.use(express.json());
 //This is setting up the connection to mongodb
 mongoose.connect("mongodb://127.0.0.1:27017/VisitorApp", {
   useNewUrlParser: true,
-  useUnifiedTopology: true
+  useUnifiedTopology: true,
 });
 let db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));
@@ -38,15 +38,16 @@ const locationSchema = new Schema({
   rating: Number,
   website: String,
   types: [String],
-  geoCordinates: []
+  geoCordinates: [],
+  visited: Boolean,
 });
 let Location = mongoose.model("Location", locationSchema, "savedLocations");
 
 //CRUD METHODS
 
 //This is for retrieving all the saved Locations
-app.get("/getLocations", function(req, res) {
-  Location.find({}, function(err, result) {
+app.get("/getLocations", function (req, res) {
+  Location.find({}, function (err, result) {
     if (err) {
       throw err;
     }
@@ -55,31 +56,36 @@ app.get("/getLocations", function(req, res) {
 });
 
 //This is for getting the placeID of a specific location
-app.get("/locations/:name", function(req, res) {
+app.get("/locations/:name", function (req, res) {
   console.log(req.params.name);
   client
     .findPlaceFromText({
       params: {
         key: api.googleApiKey.apiKey,
         input: req.params.name,
-        inputtype: "textquery"
+        inputtype: "textquery",
+        locationbias: "",
+      },
+    })
+    .then((resp) => {
+      if (resp.data.status === Status.OK) {
+        console.log(resp.data.candidates);
+        res.send(resp.data.candidates);
+      } else {
+        console.log(resp.data.error_message);
       }
     })
-    .then(resp => {
-      console.log(resp.data.candidates);
-      res.send(resp.data.candidates);
-    })
-    .catch(e => {
+    .catch((e) => {
       console.log(e);
     });
 });
 //This is for getting google details of a certain location
-app.get("/getDetails/:placeId", function(req, res) {
+app.get("/getDetails/:locationId", function (req, res) {
   client
     .placeDetails({
       params: {
         key: api.googleApiKey.apiKey,
-        place_id: req.params.placeId,
+        place_id: req.params.locationId,
         fields: [
           "formatted_address",
           "place_id",
@@ -87,34 +93,35 @@ app.get("/getDetails/:placeId", function(req, res) {
           "rating",
           "formatted_phone_number",
           "types",
-          "website"
-        ]
-      }
+          "website",
+        ],
+      },
     })
-    .then(resp => {
+    .then((resp) => {
+      console.log(resp);
       res.send(resp.data.result);
     });
 });
 //This is for getting autocomplete locations of a searched text
-app.get("/autocomplete/:name", function(req, res) {
+app.get("/autocomplete/:name", function (req, res) {
   client
     .placeAutocomplete({
       params: {
         key: api.googleApiKey.apiKey,
-        input: req.params.name
-      }
+        input: req.params.name,
+      },
     })
-    .then(resp => {
+    .then((resp) => {
       console.log(resp.data.predictions);
       res.send(resp.data.predictions);
     })
-    .catch(error => {
+    .catch((error) => {
       console.log(error);
     });
 });
 //This is for posting a location to mongoDB
 //Need to fix the geolocation method; make it cleaner
-app.post("/saveLocation", function(req, res) {
+app.post("/saveLocation", function (req, res) {
   res.send(req.body);
   console.log(req.body);
   let geoCords = [];
@@ -129,11 +136,20 @@ app.post("/saveLocation", function(req, res) {
     types: req.body.types,
     rating: req.body.rating,
     website: req.body.website,
-    geoCordinates: geoCords
+    geoCordinates: geoCords,
+    visited: req.body.visited,
   });
-  saveLocation.save(function(err, location) {
+  saveLocation.save(function (err, location) {
     if (err) return console.error(err);
     console.log("Successfully Inserted");
+  });
+});
+app.delete("/deleteLocation/:locationId", function (req, res) {
+  const id = req.params.locationId;
+  Location.deleteOne({ locationId: id }, function (err) {
+    if (err) console.log(err);
+    console.log("Success Deletion");
+    res.send({ data: "Successful Deletion" });
   });
 });
 app.listen(3000);
