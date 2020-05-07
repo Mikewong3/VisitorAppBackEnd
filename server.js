@@ -28,7 +28,7 @@ mongoose.connect("mongodb://127.0.0.1:27017/VisitorApp", {
 });
 let db = mongoose.connection;
 db.on("error", console.error.bind(console, "connection error:"));
-
+mongoose.set("useFindAndModify", false);
 //SCHEMAS FOR MONGODB **Put in seperate files later****
 const locationSchema = new Schema({
   name: String,
@@ -150,6 +150,25 @@ app.delete("/deleteLocation/:locationId", function (req, res) {
     if (err) console.log(err);
     console.log("Success Deletion");
     res.send({ data: "Successful Deletion" });
+  });
+});
+app.put("/visited/:locationId", function (req, res) {
+  const id = req.params.locationId;
+  console.log(id);
+
+  const status = !req.body.status;
+  console.log(status);
+
+  Location.findOneAndUpdate({ locationId: id }, { visited: status }, function (
+    err,
+    result
+  ) {
+    if (err) {
+      res.send(err);
+    } else {
+      console.log("----Put Result-----");
+      res.send(result);
+    }
   });
 });
 app.listen(3000);
