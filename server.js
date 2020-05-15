@@ -5,6 +5,7 @@ let api = require("./config");
 var bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
+require("dotenv").config();
 
 const { Client, Status } = require("@googlemaps/google-maps-services-js");
 
@@ -22,7 +23,7 @@ app.use(cors());
 app.use(express.json());
 
 //This is setting up the connection to mongodb
-mongoose.connect("mongodb://127.0.0.1:27017/VisitorApp", {
+mongoose.connect(process.env.DB_LINK, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
@@ -61,7 +62,7 @@ app.get("/locations/:name", function (req, res) {
   client
     .findPlaceFromText({
       params: {
-        key: api.googleApiKey.apiKey,
+        key: process.env.GOOGLE_API_LINK,
         input: req.params.name,
         inputtype: "textquery",
         locationbias: "",
@@ -84,7 +85,7 @@ app.get("/getDetails/:locationId", function (req, res) {
   client
     .placeDetails({
       params: {
-        key: api.googleApiKey.apiKey,
+        key: process.env.GOOGLE_API_LINK,
         place_id: req.params.locationId,
         fields: [
           "formatted_address",
@@ -107,7 +108,7 @@ app.get("/autocomplete/:name", function (req, res) {
   client
     .placeAutocomplete({
       params: {
-        key: api.googleApiKey.apiKey,
+        key: process.env.GOOGLE_API_LINK,
         input: req.params.name,
       },
     })
