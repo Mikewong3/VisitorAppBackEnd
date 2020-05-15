@@ -12,11 +12,9 @@ const { Client, Status } = require("@googlemaps/google-maps-services-js");
 const client = new Client({});
 
 /* TODO: 
--Add long and lat for the locations when posting them into mongoDB
 -Add Morgan for logging 
 - Add connect-timeout for iddlwa
 */
-//***REMEBER TO HIDE MY KEY OR PEOPLE STEAL BAD****
 
 //Middleware extension for express
 app.use(cors());
