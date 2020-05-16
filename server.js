@@ -1,7 +1,6 @@
 var express = require("express");
 var app = express();
 var cors = require("cors");
-let api = require("./config");
 var bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
