@@ -9,6 +9,7 @@ require("dotenv").config();
 
 const { Client, Status } = require("@googlemaps/google-maps-services-js");
 
+let port = process.env.PORT || 3000;
 const client = new Client({});
 
 /* TODO: 
@@ -154,7 +155,6 @@ app.delete("/deleteLocation/:locationId", function (req, res) {
 app.put("/visited/:locationId", function (req, res) {
   const id = req.params.locationId;
   console.log(id);
-
   const status = !req.body.status;
   console.log(status);
 
@@ -170,4 +170,9 @@ app.put("/visited/:locationId", function (req, res) {
     }
   });
 });
-app.listen(3000);
+app.get("/", function (req, res) {
+  res.send("<h1>Hello World<h1>");
+});
+app.listen(port, function () {
+  console.log(`Example app listening on port !`);
+});
