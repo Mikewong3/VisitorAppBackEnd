@@ -5,11 +5,17 @@ var bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 // require("dotenv").config();
+const slowDown = require("express-slow-down");
 
 const { Client, Status } = require("@googlemaps/google-maps-services-js");
 
 let port = process.env.PORT || 3000;
 const client = new Client({});
+const speedLimiter = slowDown({
+  windowMs: 10 * 60 * 1000, // 10 minutes
+  delayAfter: 30, // allow 100 requests per 10 minutes, then...
+  delayMs: 500, // begin adding 500ms of delay per request above 100:
+});
 
 /* TODO: 
 -Add Morgan for logging 
@@ -19,6 +25,7 @@ const client = new Client({});
 //Middleware extension for express
 app.use(cors());
 app.use(express.json());
+app.use(speedLimiter);
 
 //This is setting up the connection to mongodb
 mongoose.connect(process.env.DB_LINK, {
