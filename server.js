@@ -4,7 +4,7 @@ var cors = require("cors");
 var bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-// require("dotenv").config();
+require("dotenv").config();
 
 const { Client, Status } = require("@googlemaps/google-maps-services-js");
 
