@@ -4,7 +4,7 @@ var cors = require("cors");
 var bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-// require("dotenv").config();
+require("dotenv").config();
 const slowDown = require("express-slow-down");
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
@@ -101,7 +101,7 @@ app.post("/authenticate", auth(), (req, res) => {
   res.status(200).json({ statusCode: 200, message: "hello" });
 });
 //This is for retrieving all the saved Locations
-app.get("/getLocations", isLoggedIn, function (req, res) {
+app.get("/getLocations", function (req, res) {
   Location.find({}, function (err, result) {
     if (err) {
       throw err;
