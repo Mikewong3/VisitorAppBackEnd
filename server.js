@@ -6,7 +6,8 @@ const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
 // require("dotenv").config();
 const slowDown = require("express-slow-down");
-
+const passport = require("passport");
+const LocalStrategy = require("passport-local").Strategy;
 const { Client, Status } = require("@googlemaps/google-maps-services-js");
 
 let port = process.env.PORT || 3000;
@@ -26,6 +27,8 @@ const speedLimiter = slowDown({
 app.use(cors());
 app.use(express.json());
 app.use(speedLimiter);
+app.use(passport.initialize());
+app.use(passport.session());
 
 //This is setting up the connection to mongodb
 mongoose.connect(process.env.DB_LINK, {
@@ -49,10 +52,56 @@ const locationSchema = new Schema({
 });
 let Location = mongoose.model("Location", locationSchema, "savedLocations");
 
-//CRUD METHODS
+//Passport Authentication Setup
+passport.use(
+  new LocalStrategy(function (username, password, done) {
+    if (username === "admin" && password === "admin") {
+      return done(null, username);
+    } else {
+      return done("unauthorized access", false);
+    }
+  })
+);
+//Look this up
+passport.serializeUser(function (user, done) {
+  if (user) done(null, user);
+});
 
+passport.deserializeUser(function (id, done) {
+  done(null, id);
+});
+
+//Middleware for Passport Authentication
+const auth = () => {
+  return (req, res, next) => {
+    passport.authenticate("local", (error, user, info) => {
+      if (error) res.status(400).json({ statusCode: 200, message: error });
+      req.login(user, function (error) {
+        if (error) return next(error);
+        next();
+      });
+    })(req, res, next);
+  };
+};
+const isLoggedIn = (req, res, next) => {
+  if (req.isAuthenticated()) {
+    return next();
+  }
+  return res
+    .status(400)
+    .json({ statusCode: 400, message: "Not authenticated" });
+};
+
+//CRUD METHODS
+app.get("/logout", (req, res) => {
+  req.logOut();
+  res.status(200).json({ message: "logout" });
+});
+app.post("/authenticate", auth(), (req, res) => {
+  res.status(200).json({ statusCode: 200, message: "hello" });
+});
 //This is for retrieving all the saved Locations
-app.get("/getLocations", function (req, res) {
+app.get("/getLocations", isLoggedIn, function (req, res) {
   Location.find({}, function (err, result) {
     if (err) {
       throw err;
@@ -176,9 +225,7 @@ app.put("/visited/:locationId", function (req, res) {
     }
   });
 });
-app.get("/", function (req, res) {
-  res.send("<h1>Hello World<h1>");
-});
+
 app.listen(port, function () {
-  console.log(`Example app listening on port !`);
+  console.log(`Example app listening on port !` + port);
 });
