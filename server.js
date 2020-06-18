@@ -4,12 +4,13 @@ var cors = require("cors");
 var bodyParser = require("body-parser");
 const mongoose = require("mongoose");
 const Schema = mongoose.Schema;
-require("dotenv").config();
+// require("dotenv").config();
 const slowDown = require("express-slow-down");
 const passport = require("passport");
 const LocalStrategy = require("passport-local").Strategy;
 const { Client, Status } = require("@googlemaps/google-maps-services-js");
-
+const User = require("./models/user");
+const crypto = require("crypto");
 let port = process.env.PORT || 3000;
 const client = new Client({});
 const speedLimiter = slowDown({
@@ -29,7 +30,6 @@ app.use(express.json());
 app.use(speedLimiter);
 app.use(passport.initialize());
 app.use(passport.session());
-
 //This is setting up the connection to mongodb
 mongoose.connect(process.env.DB_LINK, {
   useNewUrlParser: true,
@@ -51,15 +51,20 @@ const locationSchema = new Schema({
   visited: Boolean,
 });
 let Location = mongoose.model("Location", locationSchema, "savedLocations");
-
 //Passport Authentication Setup
 passport.use(
   new LocalStrategy(function (username, password, done) {
-    if (username === "admin" && password === "admin") {
-      return done(null, username);
-    } else {
-      return done("unauthorized access", false);
-    }
+    User.findOne({ email: username }, function (err, user) {
+      if (user === null) {
+        return done("user does not exist", false);
+      } else {
+        if (user.validPassword(password)) {
+          return done(null, username);
+        } else {
+          return done("Unauthorized access", false);
+        }
+      }
+    });
   })
 );
 //Look this up
@@ -76,7 +81,8 @@ const auth = () => {
   return (req, res, next) => {
     passport.authenticate("local", (error, user, info) => {
       if (error) res.status(400).json({ statusCode: 200, message: error });
-      req.login(user, function (error) {
+      console.log("--FROM AUTH MIDDLEWARE--" + user);
+      req.logIn(user, function (error) {
         if (error) return next(error);
         next();
       });
@@ -85,6 +91,7 @@ const auth = () => {
 };
 const isLoggedIn = (req, res, next) => {
   if (req.isAuthenticated()) {
+    console.log("--isLoggedIn is Working");
     return next();
   }
   return res
@@ -93,13 +100,35 @@ const isLoggedIn = (req, res, next) => {
 };
 
 //CRUD METHODS
-app.get("/logout", (req, res) => {
-  req.logOut();
-  res.status(200).json({ message: "logout" });
+
+app.post("/register", function (req, res) {
+  User.findOne({ email: req.body.email }, function (err, user) {
+    if (user != null) {
+      return res.status(409).send({ message: "User already exist" });
+    } else {
+      let newUser = new User();
+      newUser.email = req.body.email;
+      newUser.setPassword(req.body.password);
+      newUser.save((err, User) => {
+        if (err) {
+          return res.status(400).send({ message: "Failed to add user" });
+        } else {
+          return res.status(201).send({
+            message: "User added successfully",
+          });
+        }
+      });
+    }
+  });
 });
+
 app.post("/authenticate", auth(), (req, res) => {
-  res.status(200).json({ statusCode: 200, message: "hello" });
+  console.log("--FROM AUTHENTICATE ROUTE---" + req.user);
+  res
+    .status(200)
+    .json({ statusCode: 200, message: "User is authroized", user: req.user });
 });
+
 //This is for retrieving all the saved Locations
 app.get("/getLocations", function (req, res) {
   Location.find({}, function (err, result) {
@@ -112,7 +141,6 @@ app.get("/getLocations", function (req, res) {
 
 //This is for getting the placeID of a specific location
 app.get("/locations/:name", function (req, res) {
-  console.log(req.params.name);
   client
     .findPlaceFromText({
       params: {
